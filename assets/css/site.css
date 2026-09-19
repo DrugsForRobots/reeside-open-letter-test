@@ -63,6 +63,8 @@ a { color: var(--navy); text-decoration-thickness: 1.5px; text-underline-offset:
 
 img { max-width: 100%; height: auto; display: block; }
 
+[hidden] { display: none !important; } /* classes that set display must not un-hide */
+
 .sr, .trap {
   position: absolute !important;
   width: 1px; height: 1px;
