@@ -14,6 +14,13 @@
   var RETRY_DELAYS = [3000, 6000, 10000];
   var DONE_KEY = 'ol-done';
   var INVITE_KEY = 'ol-r';
+  // Resend wording lives in content.js; these keep the control usable if a key goes missing.
+  var RESEND = {
+    label: (C.resend && C.resend.label) || 'Send it again',
+    sent: (C.resend && C.resend.sent) || 'Sent again - check your inbox.',
+    tooSoon: (C.resend && C.resend.tooSoon) || 'We just sent one. Give it a few minutes.',
+    failed: (C.resend && C.resend.failed) || "That didn't go through. Please try again in a moment."
+  };
 
   var store = {
     get: function (k) { try { return window.sessionStorage.getItem(k); } catch (e) { return null; } },
@@ -42,10 +49,40 @@
     $('letter-paragraphs').appendChild(p);
   });
   if (C.letter.draftNote) { $('letter-draft').textContent = C.letter.draftNote; $('letter-draft').hidden = false; }
+  // Signers agree to have their name sent to these, so the letter has to name them.
+  (C.outletNames || []).forEach(function (name) {
+    var li = document.createElement('li');
+    li.textContent = name;
+    $('outlets-list').appendChild(li);
+  });
+  if ($('outlets-list').children.length) $('outlets').hidden = false;
+  if (C.countNote) { $('count-note').textContent = C.countNote; $('count-note').hidden = false; }
   $('sign-text').textContent = C.sign.replace(/^I sign this open letter\.\s*/, '');
+  $('resend-btn').textContent = RESEND.label;
   document.querySelectorAll('[data-consent]').forEach(function (el) { el.textContent = C.consents[el.getAttribute('data-consent')]; });
   SC01_COUNTIES.forEach(function (c) { $('county-sc01').appendChild(new Option(c, c)); });
   OTHER_COUNTIES.forEach(function (c) { $('county-other').appendChild(new Option(c, c)); });
+
+  // Name the email people should look for. Someone who signed the letter and someone who
+  // only signed up get different subject lines, so the panel has to know which they are.
+  function describeConfirm(el, signed) {
+    var from = (C.confirmFrom || '').trim();
+    var subject = ((signed ? C.confirmSubject : C.confirmSubjectSupporter) || '').trim();
+    var look = 'Look for an email';
+    if (from) look += ' from ' + from;
+    if (subject) look += ' with the subject "' + subject + '"';
+    look += (from || subject ? ', and tap the link inside.' : ' and tap the link inside.');
+    var lead = document.createElement('strong');
+    lead.textContent = 'One more step:';
+    el.textContent = '';
+    el.appendChild(lead);
+    el.appendChild(document.createTextNode(' ' + look +
+      " If it hasn't arrived in a couple of minutes, look in your Promotions tab or your spam folder." +
+      (signed ? ' Confirming shows the address is real, so the count we take to the newsrooms is one they can trust.' : '')));
+  }
+  // A returning address may get no email at all, so this panel promises nothing specific.
+  $('check-confirm').textContent = 'If an email is on its way it will come from ' + (C.confirmFrom || 'us') +
+    ". If it isn't there in a few minutes, look in your Promotions tab or your spam folder.";
 
   // ---------- Invite code from a personal link (?r=CODE) ----------
   var fromUrl = (new URLSearchParams(window.location.search).get('r') || '').toUpperCase().replace(/[^A-Z2-9]/g, '');
@@ -166,25 +203,27 @@
     };
   }
 
-  function send(attempt) {
-    setBusy(true, attempt ? 'Lots of people are signing. Still working on it.' : '');
+  function post(body, onDone, onFail) {
     var controller = window.AbortController ? new AbortController() : null;
     var timer = setTimeout(function () { if (controller) controller.abort(); }, 30000);
     fetch(C.apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
       signal: controller ? controller.signal : undefined
     }).then(function (res) {
       clearTimeout(timer);
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
-    }).then(function (res) {
-      handle(res, attempt);
-    }).catch(function () {
+    }).then(onDone).catch(function () {
       clearTimeout(timer);
-      retry(attempt);
+      onFail();
     });
+  }
+
+  function send(attempt) {
+    setBusy(true, attempt ? 'Lots of people are signing. Still working on it.' : '');
+    post(payload, function (res) { handle(res, attempt); }, function () { retry(attempt); });
   }
 
   function retry(attempt) {
@@ -265,11 +304,46 @@
     var name = res.firstName && res.firstName !== 'there' ? res.firstName : '';
     $('done-title').textContent = name ? "You're in, " + name + '.' : "You're in.";
     $('done-lede').textContent = res.signed ? 'Your name is on the open letter.' : 'Thank you for signing up to support Bill.';
+    describeConfirm($('done-confirm'), !!res.signed);
     shareLinks(res.referralLink);
-    store.set(DONE_KEY, JSON.stringify({ firstName: name, signed: !!res.signed, referralLink: res.referralLink }));
+    showResend(res.resendToken);
+    store.set(DONE_KEY, JSON.stringify({
+      firstName: name, signed: !!res.signed, referralLink: res.referralLink, resendToken: res.resendToken || ''
+    }));
     addStartOver();
     showPanel('done');
   }
+
+  // Resend sits on this panel only: the check-your-email panel goes to an address already on the
+  // list, and offering a resend there would say so.
+  var resendToken = '';
+  function showResend(token) {
+    resendToken = token || '';
+    $('resend').hidden = !resendToken;
+  }
+
+  $('resend-btn').addEventListener('click', function () {
+    var btn = $('resend-btn');
+    var note = $('resend-note');
+    if (!resendToken || btn.disabled) return;
+    btn.disabled = true;
+    note.textContent = '';
+    post({ action: 'resend', resendToken: resendToken }, function (res) {
+      if (res && res.state === 'resent') {
+        note.textContent = RESEND.sent;
+        btn.hidden = true;
+        // Hiding the button would drop focus to the top of a very long panel.
+        note.setAttribute('tabindex', '-1');
+        note.focus();
+        return;
+      }
+      btn.disabled = false;
+      note.textContent = res && res.state === 'too_soon' ? RESEND.tooSoon : RESEND.failed;
+    }, function () {
+      btn.disabled = false;
+      note.textContent = RESEND.failed;
+    });
+  });
 
   function addStartOver() {
     if ($('again')) return;
@@ -306,7 +380,9 @@
       if (s && s.referralLink) {
         $('done-title').textContent = s.firstName ? "You're in, " + s.firstName + '.' : "You're in.";
         $('done-lede').textContent = s.signed ? 'Your name is on the open letter.' : 'Thank you for signing up to support Bill.';
+        describeConfirm($('done-confirm'), !!s.signed);
         shareLinks(s.referralLink);
+        showResend(s.resendToken);
         addStartOver();
         form.hidden = true;
         $('done').hidden = false;

@@ -6,8 +6,27 @@ window.OPEN_LETTER = {
   pageUrl: 'https://drugsforrobots.github.io/reeside-open-letter-test/',
   campaignUrl: 'https://reesideforcongress.com',
   disclaimer: 'Paid for by Reeside for Congress',
-  privacy: 'Reeside for Congress will never sell or rent your information, and shares it only as you choose on this form.',
-  outlets: 'local TV stations and news outlets',
+  privacy: 'Reeside for Congress will never sell or rent your information, and shares it only as you choose on this form.', // shown once, under the Add my name button
+  outlets: 'Lowcountry TV newsrooms, South Carolina ETV and the League of Women Voters chapters in SC-01',
+  // Exactly who receives the packet, so "the recipients named above" in the consent is true.
+  // WJCL 22 News is deliberately absent: it publishes no newsroom address, so it is contacted
+  // by phone and gets no signer data.
+  outletNames: [
+    'Live 5 News (WCSC)',
+    'ABC News 4 (WCIV)',
+    'News 2 (WCBD)',
+    'Fox 24 (WTAT)',
+    'WTOC 11',
+    'News 3 (WSAV)',
+    'Fox 28 Savannah (WTGS)',
+    'WHHI-TV Hilton Head',
+    'South Carolina ETV',
+    'SC Public Radio',
+    'League of Women Voters - Charleston Area',
+    'League of Women Voters - Beaufort',
+    'League of Women Voters - Hilton Head Island-Bluffton',
+    'League of Women Voters of South Carolina'
+  ],
 
   letter: {
     to: 'To the news directors of Lowcountry television stations and news outlets:',
@@ -18,11 +37,24 @@ window.OPEN_LETTER = {
     draftNote: '' // approved by Bill Reeside, 2026-09-20
   },
 
-  sign: 'I sign this open letter. Reeside for Congress may send my name, town and comment to the outlets named above, and they may publish them.',
+  countNote: 'How we count: one signature per email address. We publish the total number of signers and how many have confirmed their email address, and we never count a signature twice.',
+
+  sign: 'I sign this open letter. Reeside for Congress may send my name, town and comment to the recipients named above, and they may publish them.',
   consents: {
-    shareEmail: 'Also share my email address with those outlets so a reporter can confirm I signed.',
+    shareEmail: 'Also share my email address with those recipients so they can confirm I signed.',
     campaignEmailOk: 'Send me campaign updates by email.',
     textOk: 'Send me campaign text messages at the number above. Message and data rates may apply. Reply STOP to opt out.'
+  },
+
+  // Keep these two matching the confirmation email itself, or people look for the wrong thing.
+  confirmFrom: 'Reeside for Congress',
+  confirmSubject: 'Confirm your signature on the SC-01 debate letter',      // someone who signed the letter
+  confirmSubjectSupporter: 'Confirm your email for Bill Reeside',           // someone who only signed up
+  resend: {
+    label: "Didn't get the email? Send it again",
+    sent: 'Sent again - check your inbox.',
+    tooSoon: 'We just sent one. Give it a few minutes.',
+    failed: "That didn't go through. Please try again in a moment."
   },
 
   shareText: 'I signed an open letter asking Lowcountry TV stations to put every SC-01 candidate on the debate stage, including Bill Reeside. Add your name:'
