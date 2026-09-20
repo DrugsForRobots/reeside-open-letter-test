@@ -15,7 +15,7 @@ window.OPEN_LETTER = {
       "We, the undersigned, ask you to host a general-election debate for South Carolina's 1st Congressional District before early voting begins, and to invite every candidate on the ballot, including Libertarian nominee Bill Reeside.",
       'Voters deserve to hear from all of their choices. If you use criteria to decide who takes part, we ask that you publish them now, so every candidate and every voter knows the standard.'
     ],
-    draftNote: 'Draft: pending approval by Bill Reeside.' // remove once approved
+    draftNote: '' // approved by Bill Reeside, 2026-09-20
   },
 
   sign: 'I sign this open letter. Reeside for Congress may send my name, town and comment to the outlets named above, and they may publish them.',
